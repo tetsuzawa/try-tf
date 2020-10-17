@@ -23,8 +23,6 @@ function App() {
   //   console.log(audio);
   // };
 
-  const w5sString = `${process.env.PUBLIC_URL}/w5s.wav`;
-  console.log(w5sString);
   // @ts-ignore
   window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
@@ -34,16 +32,16 @@ function App() {
   // 再生中のときはtrue
 
   // 音源を取得しAudioBuffer形式に変換して返す関数
-  async function setupSample() {
-    const response = await fetch(w5sString);
+  const setupAudio = async (url: string) => {
+    const response = await fetch(url);
     console.log("w5s: ", response);
     const arrayBuffer = await response.arrayBuffer();
     // Web Audio APIで使える形式に変換
     return await ctx.decodeAudioData(arrayBuffer);
-  }
+  };
 
   // AudioBufferをctxに接続し再生する関数
-  function playSample(ctx: AudioContext, audioBuffer: AudioBuffer) {
+  const playSample = (ctx: AudioContext, audioBuffer: AudioBuffer) => {
     const sampleSource = ctx.createBufferSource();
     if (sampleSource == null) {
       console.log("sampleSource is null");
@@ -53,11 +51,11 @@ function App() {
     sampleSource.connect(ctx.destination);
     sampleSource.start();
     setIsPlaying(true);
-  }
+  };
 
   const onClickPlayBtn = async () => {
     if (isPlaying) return;
-    const sample = await setupSample();
+    const sample = await setupAudio(`${process.env.PUBLIC_URL}/w5s.wav`);
     playSample(ctx, sample);
   };
 
