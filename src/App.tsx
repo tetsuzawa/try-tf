@@ -10,9 +10,16 @@ import { MuiThemeProvider } from "@material-ui/core";
 import { theme } from "./theme";
 
 function App() {
+  const [isPlaying, setPlaying] = useState(false);
   const [isConvolverEnabled, setConvolverEnabled] = useState(false);
   const [SLTFs, setSLTFs] = useState<AudioBuffer[]>([]);
-  const [angle, setAngle] = useState(0);
+  const [baseAudio, setBaseAudio] = useState<AudioBuffer | null>(null);
+  const [angle, setAngle] = useState(90);
+  // @ts-ignore
+  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+  const [ctx, setCtx] = useState(new AudioContext());
+  // const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode | null>(null);
+  // const [convolver, setConvolver] = useState<AudioBufferSourceNode | null>(null);
 
   // const onChangeAudioSrc = () => {
   //   // setAudioSrc("");
@@ -27,10 +34,8 @@ function App() {
   //   console.log(audio);
   // };
 
-  // @ts-ignore
-  window.AudioContext = window.AudioContext || window.webkitAudioContext;
 
-  const ctx = new AudioContext();
+  // const ctx = new AudioContext();
 
   // let sampleSource: AudioBufferSourceNode;
   // 再生中のときはtrue
@@ -52,27 +57,42 @@ function App() {
   // AudioBufferをctxに接続し再生する関数
   // const playSample = (ctx: AudioContext, audioBuffer: AudioBuffer) => {
   // };
-  const convolver = ctx.createConvolver();
 
-  const onClickPlayBtn = async () => {
-    const sample = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
-
-    const sampleSource = ctx.createBufferSource();
-    if (sampleSource == null) {
-      console.log("sampleSource is null");
+  const onClickPlayBtn = () => {
+    if (isPlaying) {
+      console.log("now playing");
       return;
     }
-    sampleSource.buffer = sample;
+    const sampleSource = ctx.createBufferSource();
+    sampleSource.buffer = baseAudio;
+
     if (isConvolverEnabled) {
-      convolver.buffer = await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${angle*10}.wav`);
-      console.log(convolver);
+      // convolver.buffer = await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${angle * 10}.wav`);
+      const convolver = ctx.createConvolver();
+      convolver.buffer = SLTFs[angle];
+      console.log("sampleSource: ", sampleSource);
+      console.log("convolver: ", convolver);
       sampleSource.connect(convolver);
       convolver.connect(ctx.destination);
     } else {
       sampleSource.connect(ctx.destination);
     }
+    setPlaying(true);
+    sampleSource.onended = () => {
+      console.log("ended");
+      setPlaying(false);
+    };
     sampleSource.start();
   };
+
+  // const onClickStopBtn = () => {
+  //   if (!isPlaying) {
+  //     console.log("can not stop");
+  //     return;
+  //   }
+  //   // sampleSource.stop();
+  //   setPlaying(false);
+  // };
 
   useEffect(() => {
       console.log("reading");
@@ -83,21 +103,58 @@ function App() {
           arr.map(async (_, i) => await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${i * 10}.wav`))
         );
         setSLTFs(pSLTFs);
-        console.log(SLTFs);
+        const audio = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
+        setBaseAudio(audio);
       })();
 
     }
     , []);
 
 
-  const onChangeSlider = async (angle: any) => {
+  const onChangeSlider = (angle: any) => {
     // console.log(`${process.env.PUBLIC_URL}/SLTF_${angle as number * 10}.wav`);
     // convolver.buffer = await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${angle as number * 10}.wav`);
     // console.log(angle);
-    setAngle(angle as number % 360)
+    setAngle(angle as number % 360);
     console.log("angle: ", angle as number % 360, "has: ", SLTFs[angle as number] != null);
-    convolver.buffer = SLTFs[angle as number % 360];
+    // if (convolver === undefined) {
+    //   return;
+    // }
+    // setTimeout(() => {
+    //   sampleSource.disconnect();
+    //   sampleSource = ctx.createBufferSource();
+    //   sampleSource.buffer = baseAudio;
+    //   convolver.disconnect();
+    //   convolver = ctx.createConvolver();
+    //   convolver.buffer = SLTFs[angle as number % 360];
+    //   convolver.normalize = true;
+    //   sampleSource.connect(convolver);
+    //   convolver.connect(ctx.destination);
+    // });
   };
+
+  // const onClickSwitchAngleBtn = () => {
+  //   if (sampleSource === undefined) {
+  //     console.log("sampleSource is undefined");
+  //     sampleSource = ctx.createBufferSource();
+  //     return;
+  //   }
+  //   if (convolver === undefined) {
+  //     console.log("convolver is undefined");
+  //     convolver = ctx.createConvolver();
+  //     return;
+  //   }
+  //   // sampleSource.disconnect();
+  //   sampleSource = ctx.createBufferSource();
+  //   sampleSource.buffer = baseAudio;
+  //   // convolver.disconnect();
+  //   convolver = ctx.createConvolver();
+  //   convolver.buffer = SLTFs[angle as number % 360];
+  //   convolver.normalize = true;
+  //   sampleSource.connect(convolver);
+  //   convolver.connect(ctx.destination);
+  // };
+
 
   return (
     <div className="App">
@@ -135,6 +192,9 @@ function App() {
           <Button color="primary" variant="contained" className="play" onClick={onClickPlayBtn}>
             play
           </Button>
+          {/*<Button color="primary" variant="contained" className="stop" onClick={onClickStopBtn}>*/}
+          {/*  stop*/}
+          {/*</Button>*/}
           <ToggleButton
             value="check"
             color="primary"
@@ -145,6 +205,9 @@ function App() {
           >
             <CheckIcon/>
           </ToggleButton>
+          {/*<Button color="primary" variant="contained" className="switch-angle" onClick={onClickSwitchAngleBtn}>*/}
+          {/*  switch angle*/}
+          {/*</Button>*/}
         </MuiThemeProvider>
       </header>
     </div>
