@@ -1,14 +1,18 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import "./App.css";
 // @ts-ignore
 import CircularSlider from "@fseehawer/react-circular-slider";
-// import Button from "@material-ui/core/Button";
+import Button from "@material-ui/core/Button";
+import ToggleButton from "@material-ui/lab/ToggleButton";
 // import AudiotrackIcon from "@material-ui/icons/Audiotrack";
+import CheckIcon from "@material-ui/icons/Check";
 import { MuiThemeProvider } from "@material-ui/core";
 import { theme } from "./theme";
 
 function App() {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [isConvolverEnabled, setConvolverEnabled] = useState(false);
+  const [SLTFs, setSLTFs] = useState<AudioBuffer[]>([]);
+  const [angle, setAngle] = useState(0);
 
   // const onChangeAudioSrc = () => {
   //   // setAudioSrc("");
@@ -32,42 +36,68 @@ function App() {
   // 再生中のときはtrue
 
   // 音源を取得しAudioBuffer形式に変換して返す関数
-  const setupAudio = async (url: string) => {
+  const setupAudio = async (url: string): Promise<AudioBuffer> => {
     const response = await fetch(url);
-    console.log("w5s: ", response);
     const arrayBuffer = await response.arrayBuffer();
     // Web Audio APIで使える形式に変換
-    return await ctx.decodeAudioData(arrayBuffer);
+    const dec = await ctx.decodeAudioData(arrayBuffer);
+    console.log("reading audio url: ", url);
+    console.log("num of channels: ", dec.numberOfChannels);
+    console.log("num of sample rate: ", dec.sampleRate);
+    console.log("length: ", dec.length);
+    console.log("duration: ", dec.duration);
+    return dec;
   };
 
   // AudioBufferをctxに接続し再生する関数
-  const playSample = (ctx: AudioContext, audioBuffer: AudioBuffer) => {
+  // const playSample = (ctx: AudioContext, audioBuffer: AudioBuffer) => {
+  // };
+  const convolver = ctx.createConvolver();
+
+  const onClickPlayBtn = async () => {
+    const sample = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
+
     const sampleSource = ctx.createBufferSource();
     if (sampleSource == null) {
       console.log("sampleSource is null");
       return;
     }
-    sampleSource.buffer = audioBuffer;
-    sampleSource.connect(ctx.destination);
+    sampleSource.buffer = sample;
+    if (isConvolverEnabled) {
+      convolver.buffer = await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${angle*10}.wav`);
+      console.log(convolver);
+      sampleSource.connect(convolver);
+      convolver.connect(ctx.destination);
+    } else {
+      sampleSource.connect(ctx.destination);
+    }
     sampleSource.start();
-    setIsPlaying(true);
   };
 
-  const onClickPlayBtn = async () => {
-    if (isPlaying) return;
-    const sample = await setupAudio(`${process.env.PUBLIC_URL}/w5s.wav`);
-    playSample(ctx, sample);
-  };
+  useEffect(() => {
+      console.log("reading");
+      const arr = Array(360).fill(null);
 
-  // const onClickStopBtn = async () => {
-  //   // sampleSource?.stop();
-  //   // if (sampleSource == null) {
-  //   //   console.log("sampleSource is null")
-  //   //   return
-  //   // }
-  //   sampleSource.stop();
-  //   setIsPlaying(false);
-  // };
+      (async () => {
+        const pSLTFs = await Promise.all(
+          arr.map(async (_, i) => await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${i * 10}.wav`))
+        );
+        setSLTFs(pSLTFs);
+        console.log(SLTFs);
+      })();
+
+    }
+    , []);
+
+
+  const onChangeSlider = async (angle: any) => {
+    // console.log(`${process.env.PUBLIC_URL}/SLTF_${angle as number * 10}.wav`);
+    // convolver.buffer = await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${angle as number * 10}.wav`);
+    // console.log(angle);
+    setAngle(angle as number % 360)
+    console.log("angle: ", angle as number % 360, "has: ", SLTFs[angle as number] != null);
+    convolver.buffer = SLTFs[angle as number % 360];
+  };
 
   return (
     <div className="App">
@@ -85,7 +115,7 @@ function App() {
             progressColorFrom="#FFFFFF"
             progressColorTo="#FFFFFF"
             trackColor="#FFFFFF"
-            onChange={(value: any) => console.log(value)}
+            onChange={onChangeSlider}
           />
           {/*<label htmlFor="base-audio">*/}
           {/*  <input*/}
@@ -102,12 +132,19 @@ function App() {
           {/*  </Button>*/}
           {/*</label>*/}
           {/*<audio controls id="audio-src" onChange={onChangeAudioSrc} />*/}
-          <button className="play" onClick={onClickPlayBtn}>
+          <Button color="primary" variant="contained" className="play" onClick={onClickPlayBtn}>
             play
-          </button>
-          {/*<button className="stop" onClick={onClickStopBtn}>*/}
-          {/*  stop*/}
-          {/*</button>*/}
+          </Button>
+          <ToggleButton
+            value="check"
+            color="primary"
+            selected={isConvolverEnabled}
+            onChange={() => {
+              setConvolverEnabled(!isConvolverEnabled);
+            }}
+          >
+            <CheckIcon/>
+          </ToggleButton>
         </MuiThemeProvider>
       </header>
     </div>
