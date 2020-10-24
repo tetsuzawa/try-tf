@@ -3,9 +3,8 @@ import "./App.css";
 // @ts-ignore
 import CircularSlider from "@fseehawer/react-circular-slider";
 import Button from "@material-ui/core/Button";
-import ToggleButton from "@material-ui/lab/ToggleButton";
+import Switch from "@material-ui/core/Switch";
 // import AudiotrackIcon from "@material-ui/icons/Audiotrack";
-import CheckIcon from "@material-ui/icons/Check";
 import { MuiThemeProvider } from "@material-ui/core";
 import { theme } from "./theme";
 
@@ -14,12 +13,14 @@ function App() {
   const [isConvolverEnabled, setConvolverEnabled] = useState(false);
   const [SLTFs, setSLTFs] = useState<AudioBuffer[]>([]);
   const [baseAudio, setBaseAudio] = useState<AudioBuffer | null>(null);
-  const [angle, setAngle] = useState(90);
+  const [angle, setAngle] = useState(0);
   // @ts-ignore
   window.AudioContext = window.AudioContext || window.webkitAudioContext;
-  const [ctx, setCtx] = useState(new AudioContext());
+  const [ctx] = useState(new AudioContext());
   // const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode | null>(null);
   // const [convolver, setConvolver] = useState<AudioBufferSourceNode | null>(null);
+  const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode>(ctx.createBufferSource());
+  const [convolver, setConvolver] = useState<ConvolverNode>(ctx.createConvolver());
 
   // const onChangeAudioSrc = () => {
   //   // setAudioSrc("");
@@ -33,7 +34,6 @@ function App() {
   //   console.log(obj);
   //   console.log(audio);
   // };
-
 
   // const ctx = new AudioContext();
 
@@ -57,18 +57,23 @@ function App() {
   // AudioBufferをctxに接続し再生する関数
   // const playSample = (ctx: AudioContext, audioBuffer: AudioBuffer) => {
   // };
+  // let sampleSource = ctx.createBufferSource();
+  // let convolver = ctx.createConvolver();
 
   const onClickPlayBtn = () => {
     if (isPlaying) {
       console.log("now playing");
       return;
     }
-    const sampleSource = ctx.createBufferSource();
+    // sampleSource = ctx.createBufferSource();
+    setSampleSource(ctx.createBufferSource());
     sampleSource.buffer = baseAudio;
 
     if (isConvolverEnabled) {
       // convolver.buffer = await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${angle * 10}.wav`);
-      const convolver = ctx.createConvolver();
+      // const convolver = ctx.createConvolver();
+      // convolver = ctx.createConvolver();
+      setConvolver(ctx.createConvolver());
       convolver.buffer = SLTFs[angle];
       console.log("sampleSource: ", sampleSource);
       console.log("convolver: ", convolver);
@@ -95,41 +100,50 @@ function App() {
   // };
 
   useEffect(() => {
-      console.log("reading");
-      const arr = Array(360).fill(null);
+    console.log("reading");
+    const arr = Array(360).fill(null);
 
-      (async () => {
-        const pSLTFs = await Promise.all(
-          arr.map(async (_, i) => await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${i * 10}.wav`))
-        );
-        setSLTFs(pSLTFs);
-        const audio = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
-        setBaseAudio(audio);
-      })();
-
-    }
-    , []);
-
+    (async () => {
+      const pSLTFs = await Promise.all(
+        arr.map(async (_, i) => await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${i * 10}.wav`))
+      );
+      setSLTFs(pSLTFs);
+      const audio = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
+      setBaseAudio(audio);
+    })();
+  }, []);
 
   const onChangeSlider = (angle: any) => {
     // console.log(`${process.env.PUBLIC_URL}/SLTF_${angle as number * 10}.wav`);
     // convolver.buffer = await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${angle as number * 10}.wav`);
     // console.log(angle);
-    setAngle(angle as number % 360);
-    console.log("angle: ", angle as number % 360, "has: ", SLTFs[angle as number] != null);
+    setAngle((angle as number) % 360);
+    console.log("angle: ", (angle as number) % 360, "has: ", SLTFs[angle as number] != null);
     // if (convolver === undefined) {
     //   return;
     // }
     // setTimeout(() => {
-    //   sampleSource.disconnect();
-    //   sampleSource = ctx.createBufferSource();
-    //   sampleSource.buffer = baseAudio;
-    //   convolver.disconnect();
-    //   convolver = ctx.createConvolver();
-    //   convolver.buffer = SLTFs[angle as number % 360];
-    //   convolver.normalize = true;
-    //   sampleSource.connect(convolver);
-    //   convolver.connect(ctx.destination);
+    // sampleSource.disconnect();
+    // sampleSource = ctx.createBufferSource();
+    // sampleSource.buffer = baseAudio;
+    // convolver.disconnect();
+    // convolver = ctx.createConvolver();
+    // kokokara
+    // convolver.buffer = SLTFs[angle as number % 360];
+    // convolver.normalize = true;
+    // sampleSource.connect(convolver);
+    // convolver.connect(ctx.destination);
+    setConvolver((prev) => {
+      prev.buffer = SLTFs[(angle as number) % 360];
+      prev.connect(ctx.destination);
+      return prev;
+    });
+    setSampleSource((prev) => {
+      prev.connect(convolver);
+      return prev;
+    });
+
+    // sampleSource.start()
     // });
   };
 
@@ -154,7 +168,6 @@ function App() {
   //   sampleSource.connect(convolver);
   //   convolver.connect(ctx.destination);
   // };
-
 
   return (
     <div className="App">
@@ -189,22 +202,24 @@ function App() {
           {/*  </Button>*/}
           {/*</label>*/}
           {/*<audio controls id="audio-src" onChange={onChangeAudioSrc} />*/}
-          <Button color="primary" variant="contained" className="play" onClick={onClickPlayBtn}>
+          <Button
+            color="primary"
+            variant="contained"
+            className="play"
+            disabled={isPlaying}
+            onClick={onClickPlayBtn}
+          >
             play
           </Button>
           {/*<Button color="primary" variant="contained" className="stop" onClick={onClickStopBtn}>*/}
           {/*  stop*/}
           {/*</Button>*/}
-          <ToggleButton
-            value="check"
+          <Switch
             color="primary"
-            selected={isConvolverEnabled}
             onChange={() => {
               setConvolverEnabled(!isConvolverEnabled);
             }}
-          >
-            <CheckIcon/>
-          </ToggleButton>
+          />
           {/*<Button color="primary" variant="contained" className="switch-angle" onClick={onClickSwitchAngleBtn}>*/}
           {/*  switch angle*/}
           {/*</Button>*/}
