@@ -4,9 +4,11 @@ import "./App.css";
 import CircularSlider from "@fseehawer/react-circular-slider";
 import Button from "@material-ui/core/Button";
 import Switch from "@material-ui/core/Switch";
+import FormControlLabel from '@material-ui/core/FormControlLabel';
 // import AudiotrackIcon from "@material-ui/icons/Audiotrack";
 import { MuiThemeProvider } from "@material-ui/core";
 import { theme } from "./theme";
+import firebase from "./firebase";
 
 function App() {
   const [isPlaying, setPlaying] = useState(false);
@@ -16,7 +18,7 @@ function App() {
   const [angle, setAngle] = useState(0);
   // @ts-ignore
   window.AudioContext = window.AudioContext || window.webkitAudioContext;
-  const [ctx] = useState(new AudioContext());
+  const [ctx] = useState(new AudioContext({ sampleRate: 48000 }));
   // const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode | null>(null);
   // const [convolver, setConvolver] = useState<AudioBufferSourceNode | null>(null);
   const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode>(ctx.createBufferSource());
@@ -40,7 +42,6 @@ function App() {
   // let sampleSource: AudioBufferSourceNode;
   // 再生中のときはtrue
 
-
   // AudioBufferをctxに接続し再生する関数
   // const playSample = (ctx: AudioContext, audioBuffer: AudioBuffer) => {
   // };
@@ -62,6 +63,7 @@ function App() {
       // convolver = ctx.createConvolver();
       setConvolver(ctx.createConvolver());
       convolver.buffer = SLTFs[angle];
+      console.log(angle)
       console.log("sampleSource: ", sampleSource);
       console.log("convolver: ", convolver);
       sampleSource.connect(convolver);
@@ -89,7 +91,9 @@ function App() {
   useEffect(() => {
     // 音源を取得しAudioBuffer形式に変換して返す関数
     const setupAudio = async (url: string): Promise<AudioBuffer> => {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        mode: "cors",
+      });
       const arrayBuffer = await response.arrayBuffer();
       // Web Audio APIで使える形式に変換
       const dec = await ctx.decodeAudioData(arrayBuffer);
@@ -106,10 +110,27 @@ function App() {
 
     (async () => {
       const pSLTFs = await Promise.all(
-        arr.map(async (_, i) => await setupAudio(`${process.env.PUBLIC_URL}/SLTF_${i * 10}.wav`))
+        arr.map(
+          async (_, i) =>
+            await (async (): Promise<AudioBuffer> => {
+              const audioRef = firebase.storage.ref(
+                `public/subjects/TETSU/SLTF/SLTF_${i * 10}.wav`
+              );
+              console.log(audioRef);
+              const audioURL = await audioRef.getDownloadURL();
+              console.log(audioURL);
+              return setupAudio(audioURL);
+              // return setupAudio(`${process.env.PUBLIC_URL}/SLTF_${i * 10}.wav`);
+            })()
+        )
       );
       setSLTFs(pSLTFs);
-      const audio = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
+      const audioRef = firebase.storage.ref("public/common/w5s_2ch.wav");
+      console.log(audioRef);
+      const audioURL = await audioRef.getDownloadURL();
+      console.log(audioURL);
+      const audio = await setupAudio(audioURL);
+      // const audio = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
       setBaseAudio(audio);
     })();
   }, [ctx]);
@@ -203,6 +224,17 @@ function App() {
           {/*  </Button>*/}
           {/*</label>*/}
           {/*<audio controls id="audio-src" onChange={onChangeAudioSrc} />*/}
+          <FormControlLabel
+            control={
+              <Switch
+                color="primary"
+                onChange={() => {
+                  setConvolverEnabled(!isConvolverEnabled);
+                }}
+              />
+            }
+            label="Attach HRTF"
+          />
           <Button
             color="primary"
             variant="contained"
@@ -215,12 +247,6 @@ function App() {
           {/*<Button color="primary" variant="contained" className="stop" onClick={onClickStopBtn}>*/}
           {/*  stop*/}
           {/*</Button>*/}
-          <Switch
-            color="primary"
-            onChange={() => {
-              setConvolverEnabled(!isConvolverEnabled);
-            }}
-          />
           {/*<Button color="primary" variant="contained" className="switch-angle" onClick={onClickSwitchAngleBtn}>*/}
           {/*  switch angle*/}
           {/*</Button>*/}
