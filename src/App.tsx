@@ -4,7 +4,7 @@ import "./App.css";
 import CircularSlider from "@fseehawer/react-circular-slider";
 import Button from "@material-ui/core/Button";
 import Switch from "@material-ui/core/Switch";
-import FormControlLabel from '@material-ui/core/FormControlLabel';
+import FormControlLabel from "@material-ui/core/FormControlLabel";
 // import AudiotrackIcon from "@material-ui/icons/Audiotrack";
 import { MuiThemeProvider } from "@material-ui/core";
 import { theme } from "./theme";
@@ -63,7 +63,7 @@ function App() {
       // convolver = ctx.createConvolver();
       setConvolver(ctx.createConvolver());
       convolver.buffer = SLTFs[angle];
-      console.log(angle)
+      console.log(angle);
       console.log("sampleSource: ", sampleSource);
       console.log("convolver: ", convolver);
       sampleSource.connect(convolver);
