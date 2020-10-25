@@ -21,7 +21,7 @@ function App() {
   if (window.AudioContext === null || window.AudioContext === undefined) {
     console.log("bad browser");
   }
-  const [ctx] = useState(new AudioContext({sampleRate: 48000}));
+  const [ctx] = useState(new AudioContext({ sampleRate: 48000 }));
   // const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode | null>(null);
   // const [convolver, setConvolver] = useState<AudioBufferSourceNode | null>(null);
   const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode>(ctx.createBufferSource());
