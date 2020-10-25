@@ -18,7 +18,10 @@ function App() {
   const [angle, setAngle] = useState(0);
   // @ts-ignore
   window.AudioContext = window.AudioContext || window.webkitAudioContext;
-  const [ctx] = useState(new AudioContext({ sampleRate: 48000 }));
+  if (window.AudioContext === null || window.AudioContext === undefined) {
+    console.log("bad browser");
+  }
+  const [ctx] = useState(new AudioContext({sampleRate: 48000}));
   // const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode | null>(null);
   // const [convolver, setConvolver] = useState<AudioBufferSourceNode | null>(null);
   const [sampleSource, setSampleSource] = useState<AudioBufferSourceNode>(ctx.createBufferSource());
