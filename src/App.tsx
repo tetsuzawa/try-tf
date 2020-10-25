@@ -40,19 +40,6 @@ function App() {
   // let sampleSource: AudioBufferSourceNode;
   // 再生中のときはtrue
 
-  // 音源を取得しAudioBuffer形式に変換して返す関数
-  const setupAudio = async (url: string): Promise<AudioBuffer> => {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    // Web Audio APIで使える形式に変換
-    const dec = await ctx.decodeAudioData(arrayBuffer);
-    console.log("reading audio url: ", url);
-    console.log("num of channels: ", dec.numberOfChannels);
-    console.log("num of sample rate: ", dec.sampleRate);
-    console.log("length: ", dec.length);
-    console.log("duration: ", dec.duration);
-    return dec;
-  };
 
   // AudioBufferをctxに接続し再生する関数
   // const playSample = (ctx: AudioContext, audioBuffer: AudioBuffer) => {
@@ -100,6 +87,20 @@ function App() {
   // };
 
   useEffect(() => {
+    // 音源を取得しAudioBuffer形式に変換して返す関数
+    const setupAudio = async (url: string): Promise<AudioBuffer> => {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+      // Web Audio APIで使える形式に変換
+      const dec = await ctx.decodeAudioData(arrayBuffer);
+      console.log("reading audio url: ", url);
+      console.log("num of channels: ", dec.numberOfChannels);
+      console.log("num of sample rate: ", dec.sampleRate);
+      console.log("length: ", dec.length);
+      console.log("duration: ", dec.duration);
+      return dec;
+    };
+
     console.log("reading");
     const arr = Array(360).fill(null);
 
@@ -111,7 +112,7 @@ function App() {
       const audio = await setupAudio(`${process.env.PUBLIC_URL}/w5s_2ch.wav`);
       setBaseAudio(audio);
     })();
-  }, []);
+  }, [ctx]);
 
   const onChangeSlider = (angle: any) => {
     // console.log(`${process.env.PUBLIC_URL}/SLTF_${angle as number * 10}.wav`);
